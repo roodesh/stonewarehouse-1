@@ -58,9 +58,9 @@ erpnext.selling.SalesOrderController = erpnext.selling.SalesOrderController.exte
 
 					// FinByz Changes Start
 					// sales invoice
-					// if(flt(doc.per_billed, 6) < 100) {
-					// 	this.frm.add_custom_button(__('Invoice'), () => me.make_sales_invoice(), __('Create'));
-					// }
+					if(flt(doc.per_billed, 6) < 100) {
+						this.frm.add_custom_button(__('Invoice'), () => me.make_sales_invoice(), __('Create'));
+					}
 					// FinByz Changes End
 
 					// material request
@@ -112,12 +112,10 @@ erpnext.selling.SalesOrderController = erpnext.selling.SalesOrderController.exte
 					}
 				}
 				// payment request
-				// FinByz Changes Start
-				// if(flt(doc.per_billed)<100) {
-				// 	this.frm.add_custom_button(__('Payment Request'), () => this.make_payment_request(), __('Create'));
-				// 	this.frm.add_custom_button(__('Payment'), () => this.make_payment_entry(), __('Create'));
-				// }
-				// FinByz Changes End
+				if(flt(doc.per_billed)<100) {
+					this.frm.add_custom_button(__('Payment Request'), () => this.make_payment_request(), __('Create'));
+					this.frm.add_custom_button(__('Payment'), () => this.make_payment_entry(), __('Create'));
+				}
 				this.frm.page.set_inner_btn_group_as_primary(__('Create'));
 			}
 		}
