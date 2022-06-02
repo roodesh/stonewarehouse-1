@@ -74,7 +74,7 @@ def execute(filters=None):
 								currency = "INR"
 
 							try:
-								projected_qty = projected_qty_map.get((item,wh)) or 0
+								projected_qty = projected_qty_map.get((item,wh))[0] or 0
 							except:
 								projected_qty = 0
 
@@ -89,6 +89,7 @@ def execute(filters=None):
 								'in_qty': flt(qty_dict.in_qty, float_precision),
 								'out_qty': flt(qty_dict.out_qty, float_precision), 
 								'batch_no': batch,
+								'description':qty_dict.description,
 								'item_group': qty_dict.item_group,
 								'image': qty_dict.image,
 								'so_picked_qty': so_picked_qty,
@@ -147,8 +148,8 @@ def execute(filters=None):
 						# 	po_quantity = 0
 
 						try:
-							projected_qty = projected_qty_map.get(item) or 0
-							if projected_qty and not item_projected_qty_map.get(item):
+							projected_qty = projected_qty_map.get(item)[0] or 0
+							if projected_qty and not item_projected_qty_map.get(item)[0]:
 								item_projected_qty_map[item] = True
 							else:
 								projected_qty = 0
@@ -166,6 +167,7 @@ def execute(filters=None):
 							'in_qty': flt(qty_dict.in_qty, float_precision),
 							'out_qty': flt(qty_dict.out_qty, float_precision), 
 							'batch_no': batch,
+							'description':qty_dict.description,
 							'item_group': qty_dict.item_group,
 							'image': qty_dict.image,
 							'so_picked_qty': so_picked_qty,
@@ -186,7 +188,8 @@ def execute(filters=None):
 				data.append({
 					"item_code": item_wh[0],
 					"warehouse": item_wh[1],
-					"projected_qty": projected_qty
+					"projected_qty": projected_qty[0],
+					"description": projected_qty[1]
 				})
 		data = sorted(data, key = lambda i: (i.get('item_code'))) 
 
@@ -240,7 +243,7 @@ def get_stock_ledger_entries(filters):
 		# order by item_code, warehouse""" %
 		# conditions, as_dict=1)
 		return frappe.db.sql("""
-			select sle.item_code, sle.warehouse, i.item_group, i.image as image, sle.batch_no, sle.posting_date, sum(actual_qty) as actual_qty
+			select sle.item_code, sle.warehouse, i.item_group, i.description, i.image as image, sle.batch_no, sle.posting_date, sum(actual_qty) as actual_qty
 			from `tabStock Ledger Entry` as sle 
 			JOIN `tabItem` as i on i.item_code = sle.item_code
 			JOIN `tabBatch` as batch on batch.name = sle.batch_no
@@ -251,7 +254,7 @@ def get_stock_ledger_entries(filters):
 			conditions, as_dict=1)
 	else:
 		return frappe.db.sql("""
-			select sle.item_code, i.item_group, i.image as image, sle.batch_no, sle.posting_date, sum(actual_qty) as actual_qty
+			select sle.item_code, i.item_group, i.description, i.image as image, sle.batch_no, sle.posting_date, sum(actual_qty) as actual_qty
 			from `tabStock Ledger Entry` as sle 
 			JOIN `tabItem` as i on i.item_code = sle.item_code
 			JOIN `tabBatch` as batch on batch.name = sle.batch_no
@@ -294,6 +297,7 @@ def get_item_warehouse_batch_map(filters, float_precision):
 
 		qty_dict.bal_qty = flt(qty_dict.bal_qty, float_precision) + flt(d.actual_qty, float_precision)
 		qty_dict.item_group = d.item_group
+		qty_dict.description = d.description
 		qty_dict.image = d.image
 	return iwb_map
 
@@ -458,12 +462,13 @@ def get_projected_qty(filters, float_precision):
 
 		data = frappe.db.sql(f"""
 			select
-				item_code, sum(projected_qty) as projected_qty
+				bin.item_code, sum(bin.projected_qty) as projected_qty, item.description
 			from
-				`tabBin`
+				`tabBin` as bin
+				JOIN `tabItem` as item on item.name = bin.item_code
 			where
-				warehouse = '{default_order_warehouse}'
-			group by item_code, warehouse
+				bin.warehouse = '{default_order_warehouse}'
+			group by bin.item_code, bin.warehouse
 		""", as_dict= True)
 		
 		for row in data:
@@ -472,23 +477,24 @@ def get_projected_qty(filters, float_precision):
 	else:
 		data = frappe.db.sql(f"""
 			select
-				item_code, warehouse, projected_qty
+				bin.item_code, bin.warehouse, bin.projected_qty, item.description
 			from
-				`tabBin`
+				`tabBin` as bin
+				JOIN `tabItem` as item on item.name = bin.item_code
 			where
-				projected_qty != 0
-			group by item_code, warehouse
+				bin.projected_qty != 0
+			group by bin.item_code, bin.warehouse
 		""", as_dict= True)
 		
 		for row in data:
-			projected_qty_map[(row.item_code, row.warehouse)] = row.projected_qty
+			projected_qty_map[(row.item_code, row.warehouse)] = [row.projected_qty, row.description]
 		
 	return projected_qty_map
 
 def get_po_details(filters, float_precision):
 	data = frappe.db.sql("""
 		select
-			poi.item_code, (poi.qty - poi.received_qty) as po_quantity, poi.schedule_date as po_required_by_date,
+			poi.item_code, item.description,(poi.qty - poi.received_qty) as po_quantity, poi.expected_delivery_date as expected_delivery_date,
 			poi.parent as po_name, poi.sales_order as so_name, poi.warehouse, poi.item_group,
 			IF(bin.projected_qty != 0, bin.projected_qty, 0) as projected_qty 
 		from
@@ -513,7 +519,13 @@ def get_columns(filters):
 			"fieldtype": "Link",
 			"options": "Item",
 			"width": 250
-		},	
+		},
+		{
+			"label": _("Description"),
+			"fieldname": "description",
+			"fieldtype": "Text",
+			"width": 250
+		},		
 		{
 			"label": _("Selling Price"),
 			"fieldname": "standard_selling_price",
@@ -584,8 +596,8 @@ def get_columns(filters):
 				"width": 80
 			},
 			{
-				"label": _("PO ETA"),
-				"fieldname": "po_required_by_date",
+				"label": _("PO Expected Delivery Date"),
+				"fieldname": "expected_delivery_date",
 				"fieldtype": "Date",
 				"width": 100
 			},
