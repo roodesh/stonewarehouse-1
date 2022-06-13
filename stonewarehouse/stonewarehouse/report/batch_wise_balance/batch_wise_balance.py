@@ -439,12 +439,13 @@ def get_po_quantity(filters, float_precision):
 
 	data = frappe.db.sql(f"""
 		select
-			sum(qty - received_qty) as qty, item_code
+			sum(poi.qty - poi.received_qty) as qty, poi.item_code
 		from
-			`tabPurchase Order Item`
+			`tabPurchase Order Item` as poi
+			JOIN `tabPurchase Order` as po on po.name = poi.parent
 		where
-			docstatus = 1 and qty > received_qty
-		group by item_code
+			po.docstatus = 1 and po.status != "Closed" and poi.qty > poi.received_qty
+		group by poi.item_code
 	""", as_dict= True)
 
 	for po in data:
@@ -499,10 +500,11 @@ def get_po_details(filters, float_precision):
 			IF(bin.projected_qty != 0, bin.projected_qty, 0) as projected_qty 
 		from
 			`tabPurchase Order Item` as poi
+			JOIN `tabPurchase Order` as po on po.name = poi.parent
 			JOIN `tabItem` as item on item.name = poi.item_code
 			LEFT JOIN `tabBin` as bin on bin.item_code = poi.item_code and bin.warehouse = poi.warehouse
 		where
-			poi.docstatus = 1 and poi.qty > poi.received_qty and item.is_stock_item = 1
+			po.docstatus = 1 and po.status != "Closed" and poi.qty > poi.received_qty and item.is_stock_item = 1
 		order by poi.idx
 	""", as_dict= True)
 
