@@ -75,6 +75,7 @@ def execute(filters=None):
 
 							try:
 								projected_qty = projected_qty_map.get((item,wh))[0] or 0
+								projected_qty = flt(projected_qty) - flt(picked_qty)
 							except:
 								projected_qty = 0
 
@@ -185,12 +186,14 @@ def execute(filters=None):
 		
 		for item_wh, projected_qty in projected_qty_map.items():
 			if item_wh not in item_warehouse_map:
-				data.append({
-					"item_code": item_wh[0],
-					"warehouse": item_wh[1],
-					"projected_qty": projected_qty[0],
-					"description": projected_qty[1]
-				})
+				if item_wh[1] != "On Order - EDLP":
+					data.append({
+						"item_code": item_wh[0],
+						"warehouse": item_wh[1],
+						"projected_qty": projected_qty[0],
+						"balance_qty": projected_qty[1],
+						"description": projected_qty[2]
+					})
 		data = sorted(data, key = lambda i: (i.get('item_code'))) 
 
 	return columns, data
@@ -478,7 +481,7 @@ def get_projected_qty(filters, float_precision):
 	else:
 		data = frappe.db.sql(f"""
 			select
-				bin.item_code, bin.warehouse, bin.projected_qty, item.description
+				bin.item_code, bin.warehouse, bin.projected_qty, bin.actual_qty ,item.description
 			from
 				`tabBin` as bin
 				JOIN `tabItem` as item on item.name = bin.item_code
@@ -488,7 +491,7 @@ def get_projected_qty(filters, float_precision):
 		""", as_dict= True)
 		
 		for row in data:
-			projected_qty_map[(row.item_code, row.warehouse)] = [row.projected_qty, row.description]
+			projected_qty_map[(row.item_code, row.warehouse)] = [row.projected_qty, row.actual_qty, row.description]
 		
 	return projected_qty_map
 
