@@ -19,7 +19,7 @@ def execute(filters=None):
 	item_price_map = get_standard_selling_price(filters, float_precision)
 	projected_qty_map = get_projected_qty(filters, float_precision)
 
-	item_projected_qty_map, item_warehouse_map = {}, {}
+	item_projected_qty_map, item_warehouse_map, item_batch_map = {}, {}, {}
 	conditions = ''
 
 	if filters.get("to_date"):
@@ -43,7 +43,7 @@ def execute(filters=None):
 							so_delivery_warehouse = None
 
 						item_warehouse_map[(item, wh)] = True 
-
+						
 						# frappe.db.sql(f"""
 						# SELECT sum(pli.qty - (pli.wastage_qty + pli.delivered_qty)) FROM `tabPick List Item` as pli JOIN `tabPick List` as pl on pli.parent = pl.name 
 						# WHERE pli.item_code = '{item}' AND pli.batch_no='{batch}' and pl.docstatus = 1 {conditions} AND pl.company = '{filters.get('company')}'
@@ -78,7 +78,9 @@ def execute(filters=None):
 							try:
 								projected_qty = projected_qty_map.get((item,wh))[0] or 0
 								if so_delivery_warehouse == "On Order - EDLP":
-									projected_qty = flt(projected_qty) - flt(picked_qty)
+									if not item_batch_map.get((item, batch)):
+										projected_qty = flt(projected_qty) - flt(picked_qty)
+										item_batch_map[(item, batch)] = True
 							except:
 								projected_qty = 0
 
