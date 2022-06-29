@@ -36,10 +36,12 @@ def execute(filters=None):
 						try:
 							picked_qty = item_pick_map[item][batch].pickedqty
 							unlocked_qty = item_pick_map[item][batch].unlocked_qty
+							so_delivery_warehouse = item_pick_map[item][batch].so_delivery_warehouse
 						except KeyError:
 							picked_qty = 0.0
 							unlocked_qty = 0.0
-						
+							so_delivery_warehouse = None
+
 						item_warehouse_map[(item, wh)] = True 
 
 						# frappe.db.sql(f"""
@@ -75,7 +77,8 @@ def execute(filters=None):
 
 							try:
 								projected_qty = projected_qty_map.get((item,wh))[0] or 0
-								projected_qty = flt(projected_qty) - flt(picked_qty)
+								if so_delivery_warehouse == "On Order - EDLP":
+									projected_qty = flt(projected_qty) - flt(picked_qty)
 							except:
 								projected_qty = 0
 
@@ -311,22 +314,24 @@ def get_picked_qty(filters,float_precision):
 	for d in picked:
 		picked_map.setdefault(d.item_code, {})\
 			.setdefault(d.batch_no, frappe._dict({
-				"pickedqty": 0.0,"unlocked_qty": 0.0
+				"pickedqty": 0.0, "unlocked_qty": 0.0, "so_delivery_warehouse": d.so_delivery_warehouse
 			}))
 		picked_dict = picked_map[d.item_code][d.batch_no]
 		picked_dict.pickedqty = flt(picked_dict.pickedqty, float_precision) + flt(d.pickedqty, float_precision)
 		picked_dict.unlocked_qty += d.unlocked_qty
+		picked_dict.so_delivery_warehouse = d.so_delivery_warehouse
 	return picked_map
 
 def get_picked_items(filters):
 	conditions = get_picked_conditions(filters)
 	return frappe.db.sql(f"""
-				SELECT pli.item_code, pli.batch_no, (pli.qty - (pli.wastage_qty + pli.delivered_qty)) as pickedqty,
+				SELECT pli.item_code, pli.batch_no, soi.warehouse as so_delivery_warehouse, (pli.qty - (pli.wastage_qty + pli.delivered_qty)) as pickedqty,
 				IF(so.lock_picked_qty=0,(pli.qty - (pli.wastage_qty + pli.delivered_qty)),0) as unlocked_qty
 				FROM `tabPick List Item` as pli 
 				JOIN `tabPick List` as pl on pli.parent = pl.name 
 				JOIN `tabItem` as i on i.item_code = pli.item_code
-				JOIN `tabSales Order`as so on so.name = pli.sales_order
+				JOIN `tabSales Order` as so on so.name = pli.sales_order
+				JOIN `tabSales Order Item` as soi on soi.name = pli.sales_order_item
 				WHERE pl.docstatus = 1 {conditions}
 				""", as_dict=1)
 	
