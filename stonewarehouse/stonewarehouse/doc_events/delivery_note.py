@@ -108,7 +108,7 @@ def check_item_without_pick(self):
 	
 	item_without_pick_list_dict = {}
 	for row in self.items:
-		if not row.pl_detail and row.so_detail and not frappe.db.get_value("Item", row.item_code, "has_batch_no"):
+		if not row.pl_detail and row.so_detail and frappe.db.get_value("Item", row.item_code, "has_batch_no"):
 			if not item_without_pick_list_dict.get(row.so_detail):
 				item_without_pick_list_dict[row.so_detail] = 0
 			
