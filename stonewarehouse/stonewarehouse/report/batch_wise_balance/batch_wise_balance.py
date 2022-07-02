@@ -187,6 +187,9 @@ def execute(filters=None):
 		if po_details_data:
 			for row in po_details_data:
 				item_warehouse_map[(row.item_code, row.warehouse)] = True
+				if row.warehouse == "On Order - EDLP":
+					row.projected_qty += frappe.db.get_value("Sales Order Item",{"item_code": row.item_code, "warehouse":"On Order - EDLP", "docstatus":1, "qty":(">","delivered_qty"), "picked_qty":(">", 0)},"sum(picked_qty - delivered_qty)") or 0
+
 			data.extend(po_details_data)
 		
 		for item_wh, projected_qty in projected_qty_map.items():
