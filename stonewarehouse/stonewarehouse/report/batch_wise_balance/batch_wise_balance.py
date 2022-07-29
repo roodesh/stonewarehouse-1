@@ -319,12 +319,13 @@ def get_picked_qty(filters,float_precision):
 	for d in picked:
 		picked_map.setdefault(d.item_code, {})\
 			.setdefault(d.batch_no, frappe._dict({
-				"pickedqty": 0.0, "unlocked_qty": 0.0, "so_delivery_warehouse": d.so_delivery_warehouse
+				"pickedqty": 0.0, "unlocked_qty": 0.0, "so_delivery_warehouse": None
 			}))
 		picked_dict = picked_map[d.item_code][d.batch_no]
 		picked_dict.pickedqty = flt(picked_dict.pickedqty, float_precision) + flt(d.pickedqty, float_precision)
 		picked_dict.unlocked_qty += d.unlocked_qty
-		picked_dict.so_delivery_warehouse = d.so_delivery_warehouse
+		if d.pickedqty:
+			picked_dict.so_delivery_warehouse = d.so_delivery_warehouse
 	return picked_map
 
 def get_picked_items(filters):
