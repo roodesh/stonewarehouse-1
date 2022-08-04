@@ -149,7 +149,7 @@ def update_remaining_qty(self):
 		for item in self.locations:
 			if sales_order_item == item.sales_order_item:
 				qty += flt(item.qty)
-				item.remaining_qty = flt(item.so_qty) - flt(item.picked_qty) - flt(qty)
+				item.remaining_qty = round(flt(item.so_qty) - flt(item.picked_qty) - flt(qty), 10)
 
 				if item.remaining_qty < 0:
 					frappe.throw(_(f"ROW: {item.idx} : Remaining Qty Cannot be less than 0."))
