@@ -170,9 +170,9 @@ def update_sales_order(self, method):
 		for item in self.locations:
 			if frappe.db.exists("Sales Order Item", item.sales_order_item):
 				so_qty, so_picked_qty, so_delivered_without_pick = frappe.db.get_value("Sales Order Item", item.sales_order_item, ['qty', 'picked_qty', 'delivered_without_pick'])
-				picked_qty = so_picked_qty + item.qty + so_delivered_without_pick
+				picked_qty = round(so_picked_qty + item.qty + so_delivered_without_pick, 10)
 				
-				if picked_qty > so_qty:
+				if picked_qty > round(so_qty, 10):
 					frappe.throw("Can not pick item {} in row {} more than {}".format(item.item_code, item.idx, item.qty - item.picked_qty))
 
 				frappe.db.set_value("Sales Order Item", item.sales_order_item, 'picked_qty', picked_qty)
@@ -196,7 +196,7 @@ def update_sales_order(self, method):
 		for item in self.locations:
 			if frappe.db.exists("Sales Order Item", {'name': item.sales_order_item, 'parent': item.sales_order}):
 				tile = frappe.get_doc("Sales Order Item", {'name': item.sales_order_item, 'parent': item.sales_order})
-				picked_qty = tile.picked_qty - item.qty
+				picked_qty = round(tile.picked_qty - item.qty, 10)
 
 				if tile.picked_qty < 0:
 					frappe.throw("Row {}: All Item Already Canclled".format(item.idx))
