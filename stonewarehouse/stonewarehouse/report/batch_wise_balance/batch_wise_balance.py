@@ -202,8 +202,8 @@ def execute(filters=None):
 						"balance_qty": projected_qty[1],
 						"description": projected_qty[2]
 					})
-		data = sorted(data, key = lambda i: (i.get('item_code'))) 
 
+	data = sorted(data, key = lambda i: (i.get('item_code'), i.get('projected_qty') or 0))
 	return columns, data
 
 
