@@ -79,7 +79,7 @@ def execute(filters=None):
 								projected_qty = projected_qty_map.get((item,wh))[0] or 0
 								if so_delivery_warehouse == "On Order - EDLP":
 									if not item_batch_map.get((item, batch)):
-										if (highest_projected_qty_map.get(item) and wh == highest_projected_qty_map.get(item)) or not highest_projected_qty_map.get(item):
+										if (highest_projected_qty_map.get(item) and wh == highest_projected_qty_map.get(item)) or (not highest_projected_qty_map.get(item)) or (highest_projected_qty_map.get(item) and highest_projected_qty_map.get(item) not in iwb_map[item]):
 											projected_qty = flt(projected_qty) - flt(picked_qty)
 											item_batch_map[(item, batch)] = True
 							except:
@@ -280,7 +280,7 @@ def get_stock_ledger_entries(filters):
 def get_item_warehouse_batch_map(filters, float_precision):
 	sle = get_stock_ledger_entries(filters)
 	iwb_map = {}
-
+	wh_map = {}
 	from_date = getdate(filters["from_date"])
 	to_date = getdate(filters["to_date"])
 	for d in sle:
@@ -517,8 +517,7 @@ def highest_projected_qty_warehouse(filters):
 		where
 			bin.projected_qty != 0
 		order by
-			bin.projected_qty desc
-		limit 1
+			bin.projected_qty asc
 	""", as_dict= True)
 	
 	for row in data:
