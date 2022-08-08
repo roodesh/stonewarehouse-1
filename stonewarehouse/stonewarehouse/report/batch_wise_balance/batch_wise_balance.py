@@ -18,7 +18,7 @@ def execute(filters=None):
 	iwb_map = get_item_warehouse_batch_map(filters, float_precision)
 	item_price_map = get_standard_selling_price(filters, float_precision)
 	projected_qty_map = get_projected_qty(filters, float_precision)
-
+	highest_projected_qty_map = highest_projected_qty_warehouse(filters)
 	item_projected_qty_map, item_warehouse_map, item_batch_map = {}, {}, {}
 	conditions = ''
 
@@ -79,8 +79,9 @@ def execute(filters=None):
 								projected_qty = projected_qty_map.get((item,wh))[0] or 0
 								if so_delivery_warehouse == "On Order - EDLP":
 									if not item_batch_map.get((item, batch)):
-										projected_qty = flt(projected_qty) - flt(picked_qty)
-										item_batch_map[(item, batch)] = True
+										if (highest_projected_qty_map.get(item) and wh == highest_projected_qty_map.get(item)) or not highest_projected_qty_map.get(item):
+											projected_qty = flt(projected_qty) - flt(picked_qty)
+											item_batch_map[(item, batch)] = True
 							except:
 								projected_qty = 0
 
@@ -202,8 +203,8 @@ def execute(filters=None):
 						"balance_qty": projected_qty[1],
 						"description": projected_qty[2]
 					})
+		data = sorted(data, key = lambda i: (i.get('item_code')))
 
-	data = sorted(data, key = lambda i: (i.get('item_code'), i.get('projected_qty') or 0), reverse= True)
 	return columns, data
 
 
@@ -505,6 +506,26 @@ def get_projected_qty(filters, float_precision):
 			projected_qty_map[(row.item_code, row.warehouse)] = [row.projected_qty, row.actual_qty, row.description]
 		
 	return projected_qty_map
+
+def highest_projected_qty_warehouse(filters):
+	highest_projected_qty_map = {}		
+	data = frappe.db.sql(f"""
+		select
+			bin.item_code, bin.warehouse
+		from
+			`tabBin` as bin
+		where
+			bin.projected_qty != 0
+		order by
+			bin.projected_qty desc
+		limit 1
+	""", as_dict= True)
+	
+	for row in data:
+		highest_projected_qty_map[row.item_code] = row.warehouse
+		
+	return highest_projected_qty_map
+
 
 def get_po_details(filters, float_precision):
 	data = frappe.db.sql("""
