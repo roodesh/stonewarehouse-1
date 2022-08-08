@@ -203,7 +203,7 @@ def execute(filters=None):
 						"description": projected_qty[2]
 					})
 
-	data = sorted(data, key = lambda i: (i.get('item_code'), i.get('projected_qty') or 0))
+	data = sorted(data, key = lambda i: (i.get('item_code'), i.get('projected_qty') or 0), reverse= True)
 	return columns, data
 
 
