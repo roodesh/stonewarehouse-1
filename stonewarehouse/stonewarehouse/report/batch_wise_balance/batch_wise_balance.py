@@ -76,10 +76,15 @@ def execute(filters=None):
 								currency = "INR"
 
 							try:
+								cond = highest_projected_qty_map.get(item) and batch not in iwb_map[item][highest_projected_qty_map.get(item)]
+							except:
+								cond = False
+
+							try:
 								projected_qty = projected_qty_map.get((item,wh))[0] or 0
 								if so_delivery_warehouse == "On Order - EDLP":
 									if not item_batch_map.get((item, batch)):
-										if (highest_projected_qty_map.get(item) and wh == highest_projected_qty_map.get(item)) or (not highest_projected_qty_map.get(item)) or (highest_projected_qty_map.get(item) and highest_projected_qty_map.get(item) not in iwb_map[item]):
+										if (highest_projected_qty_map.get(item) and wh == highest_projected_qty_map.get(item)) or (not highest_projected_qty_map.get(item)) or (cond):
 											projected_qty = flt(projected_qty) - flt(picked_qty)
 											item_batch_map[(item, batch)] = True
 							except:
