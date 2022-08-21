@@ -11,11 +11,14 @@ from erpnext.accounts.party import get_party_details
 import math
 import datetime
 from frappe.utils.background_jobs import enqueue, get_jobs
+from erpnext.stock.stock_balance import get_reserved_qty, update_bin_qty
 
 def before_validate(self, method):
 	ignore_permission(self)
 	
 def validate(self, method):
+	for d in self.items:
+		d.old_warehouse = None
 	calculate_order_priority(self)
 
 def on_submit(self, method):
@@ -32,11 +35,18 @@ def before_update_after_submit(self, method):
 	update_idx(self)
 	update_order_rank(self)
 	update_comment(self)
+	for d in self.items:
+		old_warehouse = frappe.db.get_value(d.doctype, d.name, "warehouse")
+		if d.warehouse != old_warehouse:
+			d.old_warehouse = old_warehouse
+		else:
+			d.old_warehouse = None
 
 def on_update_after_submit(self, method):
 	delete_pick_list(self)
 	update_sales_order_total_values(self)
 	update_order_rank(self)
+	update_reserved_qty(self)
 
 def on_cancel(self, method):
 	remove_pick_list(self)
@@ -510,5 +520,27 @@ def update_order_rank_(date, order_priority, company):
 
 	return {'order_item_priority': order_item_priority, 'order_rank': order_rank}
 
+def update_reserved_qty(self, so_item_rows=None):
+	"""update requested qty (before ordered_qty is updated)"""
+	item_wh_list = []
 
-		
+	def _valid_for_reserve(item_code, warehouse):
+		if (
+			item_code
+			and warehouse
+			and [item_code, warehouse] not in item_wh_list
+			and frappe.get_cached_value("Item", item_code, "is_stock_item")
+		):
+			item_wh_list.append([item_code, warehouse])
+
+	for d in self.get("items"):
+		if (not so_item_rows or d.name in so_item_rows) and not d.delivered_by_supplier:
+			if self.has_product_bundle(d.item_code):
+				frappe.throw("warehouse cannot be updated for product bundle items")
+			else:
+				if d.old_warehouse and d.old_warehouse != d.warehouse:
+					_valid_for_reserve(d.item_code, d.old_warehouse)
+				_valid_for_reserve(d.item_code, d.warehouse)
+
+	for item_code, warehouse in item_wh_list:
+		update_bin_qty(item_code, warehouse, {"reserved_qty": get_reserved_qty(item_code, warehouse)})

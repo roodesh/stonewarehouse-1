@@ -10,6 +10,10 @@ erpnext.selling.SalesOrderController = erpnext.selling.SalesOrderController.exte
 		let allow_delivery = false;
 
 		if (doc.docstatus == 1) {
+			$.each(this.frm.doc.items || [], function(i, d) {
+				var discount_amt = frappe.meta.get_docfield(d.doctype, "discount_amount", d.name);
+				discount_amt.read_only = 1;
+			});
 			if (this.frm.doc.per_delivered == 0) {
 				this.frm.add_custom_button(__('Unpick All'), () => this.unpick_all(this.frm.doc))
 			}
