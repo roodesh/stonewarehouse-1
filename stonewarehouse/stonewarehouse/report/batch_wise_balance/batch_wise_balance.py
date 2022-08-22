@@ -200,14 +200,13 @@ def execute(filters=None):
 		
 		for item_wh, projected_qty in projected_qty_map.items():
 			if item_wh not in item_warehouse_map:
-				if item_wh[1] != "On Order - EDLP":
-					data.append({
-						"item_code": item_wh[0],
-						"warehouse": item_wh[1],
-						"projected_qty": projected_qty[0],
-						"balance_qty": projected_qty[1],
-						"description": projected_qty[2]
-					})
+				data.append({
+					"item_code": item_wh[0],
+					"warehouse": item_wh[1],
+					"projected_qty": projected_qty[0],
+					"balance_qty": projected_qty[1],
+					"description": projected_qty[2]
+				})
 		data = sorted(data, key = lambda i: (i.get('item_code')))
 
 	return columns, data
