@@ -502,7 +502,8 @@ def get_projected_qty(filters, float_precision):
 				`tabBin` as bin
 				JOIN `tabItem` as item on item.name = bin.item_code
 			where
-				bin.projected_qty != 0
+				bin.actual_qty != 0 or bin.reserved_qty != 0 or bin.ordered_qty != 0 or bin.indented_qty != 0
+				or bin.planned_qty != 0 or bin.reserved_qty_for_production != 0 or bin.reserved_qty_for_sub_contract != 0
 			group by bin.item_code, bin.warehouse
 		""", as_dict= True)
 		
