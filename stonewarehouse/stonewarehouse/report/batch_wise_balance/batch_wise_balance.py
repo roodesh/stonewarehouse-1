@@ -485,7 +485,7 @@ def get_projected_qty(filters, float_precision):
 				bin.item_code, sum(bin.projected_qty) as projected_qty, item.description
 			from
 				`tabBin` as bin
-				JOIN `tabItem` as item on item.name = bin.item_code
+				JOIN `tabItem` as item on item.name = bin.item_code and item.is_stock_item = 1
 			where
 				bin.warehouse = '{default_order_warehouse}'
 			group by bin.item_code, bin.warehouse
@@ -500,7 +500,7 @@ def get_projected_qty(filters, float_precision):
 				bin.item_code, bin.warehouse, bin.projected_qty, bin.actual_qty ,item.description
 			from
 				`tabBin` as bin
-				JOIN `tabItem` as item on item.name = bin.item_code
+				JOIN `tabItem` as item on item.name = bin.item_code and item.is_stock_item = 1
 			where
 				bin.actual_qty != 0 or bin.reserved_qty != 0 or bin.ordered_qty != 0 or bin.indented_qty != 0
 				or bin.planned_qty != 0 or bin.reserved_qty_for_production != 0 or bin.reserved_qty_for_sub_contract != 0
